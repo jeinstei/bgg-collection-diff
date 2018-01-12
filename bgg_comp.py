@@ -20,7 +20,7 @@ class c_bgg(BoardGameGeek):
     def __init__(self):
         BoardGameGeek.__init__(self)
 
-    def process(self, users, option='all', gtype='all', diff=False, verbose=True):
+    def process(self, users, option='all', gtype='all', diff=False, verbose=True, alpha_sort=True):
         
         if verbose:
             print("Getting collections for users {0}".format(users))
@@ -57,14 +57,17 @@ class c_bgg(BoardGameGeek):
         # Get specific type if requested
         if gtype != 'all':
             if verbose:
-                print("Processing list for items of type {0}".format(gtype))
+                print("Filter type {0} in collections".format(gtype))
             remove_list = []
             for item in master_list:
-                game = self.game(name=item)
-                if game is None:
-                    print("None Found {0}".format(item))
-                    remove_list.append(item)
-                    continue
+                do_transact = True
+                while(do_transact):
+                    game = self.game(name=item)
+                    
+                    if game is None:
+                        continue
+                    
+                    do_transact = False
                     
                 isexpansion = game.expansion
                 
@@ -73,6 +76,11 @@ class c_bgg(BoardGameGeek):
                     remove_list.append(item)
 
             [master_list.discard(item) for item in remove_list]
+
+        if alpha_sort:
+            # from https://stackoverflow.com/questions/2669059/how-to-sort-alpha-numeric-set-in-python
+            master_list = sorted(master_list, key=lambda item: (int(item.partition(' ')[0])
+                               if item[0].isdigit() else float('inf'), item))
 
         return master_list
 
@@ -91,8 +99,8 @@ if __name__ == '__main__':
     ]
 
     types = [
-        'expansion',
-        'base',
+        #'expansion',
+        #'base',
         'all'
     ]
     
@@ -107,10 +115,8 @@ if __name__ == '__main__':
     
     users = args.users
 
+    # BGG requests >5 seconds between requests to not have issues
     bgg = c_bgg()
-    
-    try:
-        result =  bgg.process(users, args.option, args.gtype, diff=args.diff)
-        print("Found {0} entries\n{1}".format(len(result), result))
-    except Exception, e:
-        print "An error occurred, please try again. {0}".format(e)
+
+    result =  bgg.process(users, args.option, args.gtype, diff=args.diff)
+    print("Found {0} entries\n{1}".format(len(result), result))
