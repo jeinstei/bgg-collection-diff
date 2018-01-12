@@ -20,23 +20,27 @@ class c_bgg(BoardGameGeek):
     def __init__(self):
         BoardGameGeek.__init__(self)
 
-    def process(self, users, option='all', gtype='all', action='union', verbose=True, alpha_sort=True):
+    def process(self, users, option='all', gtype='all', action='union', all_lists=False, verbose=True, alpha_sort=True):
         
         if verbose:
             print("Getting collections for users {0}".format(users))
             
         collection_list = []
         for user in users:
-            collection = self.collection(user_name=user)
+            try:
+                collection = self.collection(user_name=user)
+            except Exception, e:
+                print("Error getting collection for {0}:\n{1}".format(user, e))
+                sys.exit()
             collection_list.append(collection)
 
         master_set = set()
         if action == 'union':
             master_set = self.__union(collection_list, option)
         elif action == 'diff' and len(collection_list) > 1:
-            master_set = self.__diff(collection_list, option)
+            master_set = self.__diff(collection_list, option, all_lists)
         elif action == 'intersect' and len(collection_list) > 1:
-            master_set = self.__intersect(collection_list, option)
+            master_set = self.__intersect(collection_list, option, all_lists)
         else:
             if verbose:
                 print("Action ignored due to single user specified. Returning user collection")
@@ -52,19 +56,33 @@ class c_bgg(BoardGameGeek):
 
         return master_set
 
-    def __diff(self, clist, option):
+    def __diff(self, clist, option, all_lists):
         """Return set of items on first user's list but not the others"""
         
-        if option == 'all':
-            outset = set([item.name for item in clist[0].items])
-        else:
-            outset = set([item.name for item in clist[0].items if getattr(item, option)])
-            
-        for collection in clist[1:len(clist)]:
+        if not all_lists:
             if option == 'all':
-                outset = outset.difference([item.name for item in collection.items])
+                inset = set([item.name for item in clist[0].items])
             else:
-                outset = outset.difference([item.name for item in collection.items if getattr(item, option)])
+                inset = set([item.name for item in clist[0].items if getattr(item, option)])
+        
+        outset = set()
+        if all_lists:
+            outset = inset
+            for collection in clist[1:len(clist)]:
+                if option == 'all':
+                    outset = outset.difference([item.name for item in collection.items])
+                else:
+                    outset = outset.difference([item.name for item in collection.items if getattr(item, option)])
+
+        else:
+            for collection in clist[1:len(clist)]:
+                if option == 'all':
+                    diffset = inset.difference([item.name for item in collection.items])
+                else:
+                    diffset = inset.difference([item.name for item in collection.items if getattr(item, option)])
+                
+                outset.union(diffset)
+
         return outset
 
     def __union(self, clist, option):
@@ -78,19 +96,33 @@ class c_bgg(BoardGameGeek):
                 outset = outset.union([item.name for item in collection.items if getattr(item, option)])
         return outset
 
-    def __intersect(self, clist, option):
+    def __intersect(self, clist, option, all_lists):
         """Create intersection of collections based on first user"""
         
-        if option == 'all':
-            outset = set([item.name for item in clist[0].items])
-        else:
-            outset = set([item.name for item in clist[0].items if getattr(item, option)])
-            
-        for collection in clist[1:len(clist)]:
+        if not all_lists:
             if option == 'all':
-                outset = outset.intersection([item.name for item in collection.items])
+                inset = set([item.name for item in clist[0].items])
             else:
-                outset = outset.intersection([item.name for item in collection.items if getattr(item, option)])
+                inset = set([item.name for item in clist[0].items if getattr(item, option)])
+        
+        outset = set()
+        if all_lists:
+            outset = inset
+            for collection in clist[1:len(clist)]:
+                if option == 'all':
+                    outset = outset.intersection([item.name for item in collection.items])
+                else:
+                    outset = outset.intersection([item.name for item in collection.items if getattr(item, option)])
+
+        else:
+            for collection in clist[1:len(clist)]:
+                if option == 'all':
+                    intset = inset.intersection([item.name for item in collection.items])
+                else:
+                    intset = inset.intersection([item.name for item in collection.items if getattr(item, option)])
+                
+                outset.union(intset)
+
         return outset
 
     def __filter(self, inset, gtype):
@@ -155,6 +187,7 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--type", dest='gtype', default='all', choices=types, help="Type option")
     parser.add_argument("-a", "--action", choices=actions, help="intersect: Return set of items on first user's list but not the others; \
                                                                  diff: Return set of items on first user's list but not the others")
+    parser.add_argument("--opall", action="store_true", help="Perform operation on all collections, not just comparing to first user")                                                             
     parser.add_argument("users", nargs="+", help="USer to display or users to compare")
     args = parser.parse_args()
     
@@ -163,5 +196,5 @@ if __name__ == '__main__':
     # BGG requests >5 seconds between requests to not have issues
     bgg = c_bgg()
 
-    result =  bgg.process(users, args.option, args.gtype, args.action)
+    result =  bgg.process(users, args.option, args.gtype, args.action, args.opall)
     print("{0}\nFound {1} entries\n".format(result, len(result)))
