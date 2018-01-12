@@ -43,27 +43,7 @@ class c_bgg(BoardGameGeek):
             master_set = self.__union(collection_list, option)
 
         # Get specific type if requested
-        if gtype != 'all':
-            if verbose:
-                print("Filter type {0} in collections".format(gtype))
-            remove_list = []
-            for item in master_set:
-                do_transact = True
-                while(do_transact):
-                    game = self.game(name=item)
-                    
-                    if game is None:
-                        continue
-                    
-                    do_transact = False
-                    
-                isexpansion = game.expansion
-                
-                if ((gtype == 'expansion' and not isexpansion) or
-                   (gtype == 'base' and isexpansion)):
-                    remove_list.append(item)
-
-            [master_set.discard(item) for item in remove_list]
+        master_set = self.__filter(master_set, gtype)
 
         if alpha_sort:
             # from https://stackoverflow.com/questions/2669059/how-to-sort-alpha-numeric-set-in-python
@@ -113,6 +93,33 @@ class c_bgg(BoardGameGeek):
                 outset = outset.intersection([item.name for item in collection.items if getattr(item, option)])
         return outset
 
+    def __filter(self, inset, gtype):
+        """Perform filtering based on item type"""
+        
+        if gtype != 'all':
+            if verbose:
+                print("Filter type {0} in collections".format(gtype))
+            remove_list = []
+            for item in inset:
+                do_transact = True
+                while(do_transact):
+                    game = self.game(name=item)
+                    
+                    if game is None:
+                        continue
+                    
+                    do_transact = False
+                    
+                isexpansion = game.expansion
+                
+                if ((gtype == 'expansion' and not isexpansion) or
+                   (gtype == 'base' and isexpansion)):
+                    remove_list.append(item)
+
+            [inset.discard(item) for item in remove_list]
+            
+        return inset
+
 if __name__ == '__main__':
     
     options = [
@@ -127,6 +134,8 @@ if __name__ == '__main__':
         'wishlist',
     ]
 
+
+    # Currently ignoring filtering by type due to processing issues
     types = [
         #'expansion',
         #'base',
