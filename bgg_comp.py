@@ -80,9 +80,8 @@ class c_bgg(BoardGameGeek):
                     diffset = inset.difference([item.name for item in collection.items])
                 else:
                     diffset = inset.difference([item.name for item in collection.items if getattr(item, option)])
+                outset = outset.union(diffset)
                 
-                outset.union(diffset)
-
         return outset
 
     def __union(self, clist, option):
@@ -121,7 +120,7 @@ class c_bgg(BoardGameGeek):
                 else:
                     intset = inset.intersection([item.name for item in collection.items if getattr(item, option)])
                 
-                outset.union(intset)
+                outset = outset.union(intset)
 
         return outset
 
